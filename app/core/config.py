@@ -1,9 +1,5 @@
-from dotenv import load_dotenv
-import os
+from datetime import timedelta
 
-load_dotenv()
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = "mediqueue-super-secret-key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
