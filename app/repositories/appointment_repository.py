@@ -60,3 +60,26 @@ def get_current_queue(
         )
         .first()
     )
+
+
+def update_appointment_status(
+    db: Session,
+    appointment_id: int,
+    status: str
+):
+    """
+    Update appointment status.
+    """
+
+    appointment = (
+        db.query(Appointment)
+        .filter(Appointment.id == appointment_id)
+        .first()
+    )
+
+    if appointment:
+        appointment.status = status
+        db.commit()
+        db.refresh(appointment)
+
+    return appointment

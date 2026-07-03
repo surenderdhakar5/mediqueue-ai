@@ -10,6 +10,7 @@ from app.repositories.appointment_repository import (
     get_appointment_by_id,
     get_last_queue_number,
     get_current_queue,
+    update_appointment_status,
 )
 
 from app.repositories.user_repository import get_user_by_id
@@ -103,3 +104,30 @@ def get_appointment(db: Session, appointment_id: int):
         )
 
     return appointment
+
+
+def change_status(
+    db: Session,
+    appointment_id: int,
+    status: str
+):
+    """
+    Change appointment status.
+    """
+
+    appointment = update_appointment_status(
+        db,
+        appointment_id,
+        status
+    )
+
+    if appointment is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Appointment not found"
+        )
+
+    return {
+        "message": f"Appointment marked as {status}",
+        "appointment": appointment
+    }
