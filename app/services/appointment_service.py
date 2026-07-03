@@ -2,18 +2,23 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.appointment import Appointment
+from app.services.ai_service import estimate_wait_time
+
 from app.repositories.appointment_repository import (
     create_appointment,
     get_all_appointments,
     get_appointment_by_id,
     get_last_queue_number,
+    get_current_queue,
 )
+
 from app.repositories.user_repository import get_user_by_id
 from app.repositories.doctor_repository import get_doctor_by_id
 
 
 def book_appointment(db: Session, data):
 
+    # Check Patient
     patient = get_user_by_id(db, data.patient_id)
 
     if patient is None:
@@ -22,6 +27,7 @@ def book_appointment(db: Session, data):
             detail="Patient not found"
         )
 
+    # Check Doctor
     doctor = get_doctor_by_id(db, data.doctor_id)
 
     if doctor is None:
@@ -30,13 +36,19 @@ def book_appointment(db: Session, data):
             detail="Doctor not found"
         )
 
-    last = get_last_queue_number(db)
+    # Queue Number
+    last = get_last_queue_number(
+        db,
+        data.doctor_id,
+        data.appointment_date
+    )
 
     if last:
         queue_number = last.queue_number + 1
     else:
         queue_number = 1
 
+    # Create Appointment
     appointment = Appointment(
         patient_id=data.patient_id,
         doctor_id=data.doctor_id,
@@ -46,7 +58,31 @@ def book_appointment(db: Session, data):
         queue_number=queue_number,
     )
 
-    return create_appointment(db, appointment)
+    saved_appointment = create_appointment(db, appointment)
+
+    # Current Queue
+    current = get_current_queue(
+        db,
+        data.doctor_id,
+        data.appointment_date
+    )
+
+    current_queue = 0
+
+    if current:
+        current_queue = current.queue_number
+
+    # AI Wait Time
+    estimated = estimate_wait_time(
+        queue_number,
+        current_queue
+    )
+
+    return {
+        "appointment": saved_appointment,
+        "estimated_wait_time_minutes": estimated,
+        "current_queue": current_queue
+    }
 
 
 def list_appointments(db: Session):
@@ -55,7 +91,10 @@ def list_appointments(db: Session):
 
 def get_appointment(db: Session, appointment_id: int):
 
-    appointment = get_appointment_by_id(db, appointment_id)
+    appointment = get_appointment_by_id(
+        db,
+        appointment_id
+    )
 
     if appointment is None:
         raise HTTPException(
