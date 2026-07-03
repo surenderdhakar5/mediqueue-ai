@@ -1,0 +1,35 @@
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from app.db.database import get_db
+from app.schemas.appointment import AppointmentCreate
+from app.services.appointment_service import (
+    book_appointment,
+    list_appointments,
+    get_appointment,
+)
+
+router = APIRouter()
+
+
+@router.post("/")
+def create_new_appointment(
+    appointment: AppointmentCreate,
+    db: Session = Depends(get_db)
+):
+    return book_appointment(db, appointment)
+
+
+@router.get("/")
+def get_all_appointments(
+    db: Session = Depends(get_db)
+):
+    return list_appointments(db)
+
+
+@router.get("/{appointment_id}")
+def get_appointment_by_id(
+    appointment_id: int,
+    db: Session = Depends(get_db)
+):
+    return get_appointment(db, appointment_id)

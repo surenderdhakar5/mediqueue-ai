@@ -1,72 +1,49 @@
-from fastapi import HTTPException
-from jose import jwt, JWTError
+from datetime import datetime, timedelta
 
-from app.core.config import SECRET_KEY, ALGORITHM
+from jose import jwt
+from passlib.context import CryptContext
 
-from app.core.security import (
-    hash_password,
-    verify_password,
-    create_access_token
+from app.core.config import (
+    SECRET_KEY,
+    ALGORITHM,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+)
+
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
 )
 
 
-def create_user(data):
-    hashed = hash_password(data.password)
-
-    return {
-        "full_name": data.full_name,
-        "email": data.email,
-        "phone": data.phone,
-        "password": hashed,
-        "role": data.role
-    }
+def hash_password(password: str):
+    return pwd_context.hash(password)
 
 
-def login_user(data):
-    # OAuth2PasswordRequestForm uses 'username'
-    if data.username != "surendra@gmail.com":
-        return None
+def verify_password(plain_password: str, hashed_password: str):
+    return pwd_context.verify(
+        plain_password,
+        hashed_password,
+    )
 
-    # Demo Password
-    hashed_password = hash_password("123456")
 
-    if not verify_password(data.password, hashed_password):
-        return None
+def create_access_token(data: dict):
 
-    token = create_access_token(
+    to_encode = data.copy()
+
+    expire = datetime.utcnow() + timedelta(
+        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+    )
+
+    to_encode.update(
         {
-            "sub": data.username
+            "exp": expire
         }
     )
 
-    return {
-        "access_token": token,
-        "token_type": "bearer"
-    }
+    encoded_jwt = jwt.encode(
+        to_encode,
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
 
-
-def get_current_user(token: str):
-    try:
-        payload = jwt.decode(
-            token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM]
-        )
-
-        email = payload.get("sub")
-
-        if email is None:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid Token"
-            )
-
-        return {
-            "email": email
-        }
-
-    except JWTError:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid Token"
-        )
+    return encoded_jwt
